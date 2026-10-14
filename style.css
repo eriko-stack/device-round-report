@@ -14,3 +14,15 @@
  .comment textarea{min-height:300px}
 }
 @media print{#paper h1{white-space:nowrap;overflow:hidden}}
+/* 入力画面のタイトルを囲む */
+header h1 {
+  border: 2px solid #203e60;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+/* A4報告書のタイトルを囲む */
+#paper h1 {
+  border: 1px solid #203e60;
+  padding: 2mm 3mm;
+}
