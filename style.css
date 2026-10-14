@@ -62,3 +62,8 @@ header h1 {
   }
   #paper footer { bottom: 0; right: 0; }
 }
+/* 入力画面と報告書のタイトルを中央揃え */
+header h1,
+#paper h1 {
+  text-align: center;
+}
