@@ -26,20 +26,19 @@
   const text=(content,x,y,w,h,options={})=>slide.addText(content,{x:inch(x),y:inch(y),w:inch(w),h:inch(h),fontFace:FONT,fontSize:10,color:'203E60',lang:'ja-JP',margin:0,paraSpaceAfter:0,vertAnchor:'top',valign:'top',...options});
   const shape=(x,y,w,h,color,line={color,transparency:100})=>slide.addShape(pptx.ShapeType.rect,{x:inch(x),y:inch(y),w:inch(w),h:inch(h),fill:{color},line});
   shape(12,12,186,15,'FFFFFF',{color:'203E60',width:1});
-  const title=`${report.place||'○○'}ラウンド報告書`;let titleSize=18;
-  while(wrapped(context,title,180,titleSize,true).length>1&&titleSize>10)titleSize--;
+  const title=`${report.place||'○○'}ラウンド報告書`;const titleSize=28;
   if(wrapped(context,title,180,titleSize,true).length>1)throw Error('場所の文字を短くしてください。');
   text(title,15,13,180,13,{fontSize:titleSize,bold:true,align:'center',valign:'mid'});
   const meta=`日時：${report.date}　${report.time}\n参加者：${report.participants}`;
-  if(wrapped(context,meta,186,10).length*10*1.45*25.4/72>20)throw Error('参加者または時間を短くしてください。');
-  text(meta,12,31,186,20,{fontSize:10,lineSpacingMultiple:1.1});
-  const rowHeight=223/report.count;
+  if(wrapped(context,meta,186,16).length*16*1.45*25.4/72>22)throw Error('参加者または時間を短くしてください。');
+  text(meta,12,31,186,22,{fontSize:16,lineSpacingMultiple:1.05});
+  const rowHeight=230/report.count;
   for(let i=0;i<report.count;i++){
-   const item=report.items[i],top=57+i*rowHeight,heading=`${i+1}. ${item.title||'確認項目'}`;
-   if(wrapped(context,heading,182,10.5,true).length>1)throw Error(`項目${i+1}の見出しを短くしてください。`);
-   shape(12,top,1.5,6,'203E60');text(heading,16,top,182,7,{fontSize:10.5,bold:true});
+   const item=report.items[i],top=56+i*rowHeight,heading=`${i+1}. ${item.title||'確認項目'}`;
+   if(wrapped(context,heading,182,14,true).length>1)throw Error(`項目${i+1}の見出しを短くしてください。`);
+   shape(12,top,1.5,7.5,'203E60');text(heading,16,top,182,8,{fontSize:14,bold:true});
    slide.addShape(pptx.ShapeType.line,{x:inch(12),y:inch(top+8),w:inch(186),h:0,line:{color:'9BB1C8',width:.5}});
-   const y=top+11,h=rowHeight-15,w=91.5,right=106.5;
+   const y=top+9.5,h=rowHeight-10.5,w=91.5,right=106.5;
    if(item.photo){
     if(!/^data:image\/(jpeg|png);base64,/.test(item.photo))throw Error('写真データを確認してください。');
     const image=new Image();image.src=item.photo;await image.decode();
@@ -47,14 +46,14 @@
     slide.addImage({data:item.photo,x:inch(12+(w-iw)/2),y:inch(y+(h-ih)/2),w:inch(iw),h:inch(ih),altText:`写真 ${i+1}`});
    }else text('写真未登録',15,y+3,w-6,h-6,{fontSize:10});
    shape(right,y,w,h,'E0EAF3');
-   const size=report.count===5?9:10;
+   const size=12;
    const paragraphs=String(item.comment).split('\n');
-   const count=paragraphs.reduce((sum,line)=>sum+wrapped(context,line,w-6,size,['確認した状況','ご提案'].includes(line.trim())).length,0);
-   if(count*size*1.45*25.4/72>h-6)throw Error(`項目${i+1}のコメントが枠に収まりません。短くするか件数を減らしてください。`);
+   const count=paragraphs.reduce((sum,line)=>sum+wrapped(context,line,w-3,size,['確認した状況','ご提案'].includes(line.trim())).length,0);
+   if(count*size*1.25*25.4/72>h-3)throw Error(`項目${i+1}のコメントが枠に収まりません。短くするか件数を減らしてください。`);
    const runs=paragraphs.map((line,index)=>({text:line||' ',options:{bold:['確認した状況','ご提案'].includes(line.trim()),breakLine:index<paragraphs.length-1}}));
-   text(runs,right+3,y+3,w-6,h-6,{fontSize:size,lineSpacingMultiple:1.15,fit:'shrink'});
+   text(runs,right+1.5,y+1.5,w-3,h-3,{fontSize:size,lineSpacingMultiple:1.0,fit:'none'});
   }
-  text('1 / 1',175,286,23,5,{fontSize:8,align:'right'});
+  text('1 / 1',175,290,23,4,{fontSize:8,align:'right'});
   const result=await pptx.write({outputType:'arraybuffer',compression:true});
   return new Blob([result],{type:MIME});
  }

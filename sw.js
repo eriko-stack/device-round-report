@@ -1,4 +1,4 @@
-const CACHE='device-round-v6-export-choice';
+const CACHE='device-round-v7-report-fonts';
 const FILES=['./','./index.html','./style.css','./model.js','./app.js','./pptx-local.js','./pptxgen.bundle.js','./pdf-local.js','./manifest.webmanifest','./icon.svg'];
 const URLS=FILES.map(path=>new URL(path,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil(

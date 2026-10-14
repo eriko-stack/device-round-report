@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 let report=RoundModel.fresh(),db,dirty=false;
-const status=(message,error=false)=>{$('status').textContent=message;$('status').classList.toggle('error',error)};
+const status=(message,error=false)=>{$('status').textContent=message;$('status').classList.toggle('error',error);const bottom=$('save-status');if(bottom){bottom.textContent=message;bottom.classList.toggle('error',error)}};
 function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open('device-round-reports',1);request.onupgradeneeded=()=>request.result.createObjectStore('reports',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
 function transact(mode,operation){return new Promise((resolve,reject)=>{const transaction=db.transaction('reports',mode);const request=operation(transaction.objectStore('reports'));transaction.oncomplete=()=>resolve(request.result);transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error)})}
 async function refreshList(){const all=await transact('readonly',store=>store.getAll());const select=$('reports');select.replaceChildren(new Option('選択してください',''));all.sort((a,b)=>b.updated.localeCompare(a.updated));for(const r of all)select.add(new Option(`${r.date} ${r.place||'場所未入力'}`,r.id));select.value=all.some(r=>r.id===report.id)?report.id:''}
@@ -169,5 +169,14 @@ $('pdf').addEventListener('click', async () => {
   }
 });
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});
+const savePanel = document.createElement('section');
+savePanel.className = 'screen panel';
+savePanel.id = 'save-panel';
+const bottomStatus = document.createElement('p');
+bottomStatus.id = 'save-status';
+bottomStatus.setAttribute('role', 'status');
+bottomStatus.setAttribute('aria-live', 'polite');
+savePanel.append($('save'), bottomStatus);
+document.querySelector('main').append(savePanel);
 render();openDB().then(async value=>{db=value;await refreshList();status('端末内保存を利用できます。入力後に保存してください。')}).catch(()=>status('端末内保存を利用できません。通常のSafariで開き、編集データを書き出してください。',true));
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});

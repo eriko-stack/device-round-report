@@ -48,37 +48,36 @@
   if(![3,4,5].includes(report.count))throw Error('件数を確認してください。');
   const canvas=document.createElement('canvas');canvas.width=2480;canvas.height=3508;
   const context=canvas.getContext('2d');if(!context)throw Error('PDFの作成機能を利用できません。');
-  const mm=canvas.width/210;const M=value=>value*mm;
+  const mm=canvas.width/210;const M=value=>value*mm;const PT=value=>M(value*25.4/72);
   context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.textBaseline='top';
   const left=M(12),width=M(186),titleTop=M(12),titleHeight=M(15);
   context.strokeStyle='#203e60';context.lineWidth=M(.4);context.strokeRect(left,titleTop,width,titleHeight);
-  const title=`${report.place||'○○'}ラウンド報告書`;let titleSize=M(6.4);font(context,titleSize,true);
-  while(context.measureText(title).width>width-M(6)&&titleSize>M(3.5)){titleSize-=1;font(context,titleSize,true)}
+  const title=`${report.place||'○○'}ラウンド報告書`;const titleSize=PT(28);font(context,titleSize,true);
   if(context.measureText(title).width>width-M(6))throw Error('場所の文字を短くしてください。');
   context.fillStyle='#203e60';context.textAlign='center';context.fillText(title,canvas.width/2,titleTop+(titleHeight-titleSize)/2);
-  drawText(context,`日時：${report.date}　${report.time}\n参加者：${report.participants}`,left,M(31),width,M(20),M(3.5));
-  const start=M(57),bottom=M(280),rowHeight=(bottom-start)/report.count;
+  drawText(context,`日時：${report.date}　${report.time}\n参加者：${report.participants}`,left,M(31),width,M(22),PT(16));
+  const start=M(56),bottom=M(286),rowHeight=(bottom-start)/report.count;
   for(let i=0;i<report.count;i++){
    const item=report.items[i],top=start+i*rowHeight;
    const heading=`${i+1}. ${item.title||'確認項目'}`;
-   context.fillStyle='#203e60';context.fillRect(left,top,M(1.5),M(6));
-   drawText(context,heading,left+M(4),top,width-M(4),M(7),M(3.8),true);
+   context.fillStyle='#203e60';context.fillRect(left,top,M(1.5),M(7.5));
+   drawText(context,heading,left+M(4),top,width-M(4),M(8),PT(14),true);
    context.strokeStyle='#9bb1c8';context.lineWidth=M(.2);context.beginPath();context.moveTo(left,top+M(8));context.lineTo(left+width,top+M(8));context.stroke();
-   const boxY=top+M(11),boxHeight=rowHeight-M(15),gap=M(3),photoWidth=(width-gap)/2;
+   const boxY=top+M(9.5),boxHeight=rowHeight-M(10.5),gap=M(3),photoWidth=(width-gap)/2;
    if(item.photo){
     const image=new Image();image.src=item.photo;await image.decode();
     const factor=Math.min(photoWidth/image.naturalWidth,boxHeight/image.naturalHeight);
     const iw=image.naturalWidth*factor,ih=image.naturalHeight*factor;
     context.drawImage(image,left+(photoWidth-iw)/2,boxY+(boxHeight-ih)/2,iw,ih);
    }else drawText(context,'写真未登録',left+M(3),boxY+M(3),photoWidth-M(6),boxHeight,M(3.4));
-   const commentX=left+photoWidth+gap,padding=M(3),size=M(report.count===5?3.1:3.5),leading=size*1.45;
+   const commentX=left+photoWidth+gap,padding=M(1.5),size=PT(12),leading=size*1.25;
    context.fillStyle='#e0eaf3';context.fillRect(commentX,boxY,photoWidth,boxHeight);
    const wrapped=commentLines(context,item.comment,photoWidth-padding*2,size);
    if(wrapped.length*leading>boxHeight-padding*2)throw Error(`項目${i+1}のコメントが枠に収まりません。短くするか件数を減らしてください。`);
    context.fillStyle='#203e60';context.textAlign='left';
    wrapped.forEach((entry,index)=>{font(context,size,entry.bold);context.fillText(entry.line,commentX+padding,boxY+padding+index*leading)});
   }
-  font(context,M(2.7));context.fillStyle='#203e60';context.textAlign='right';context.fillText('1 / 1',left+width,M(286));
+  font(context,M(2.7));context.fillStyle='#203e60';context.textAlign='right';context.fillText('1 / 1',left+width,M(290));
   const jpeg=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('PDF画像を生成できませんでした。')),'image/jpeg',.94));
   const result=buildPdf(new Uint8Array(await jpeg.arrayBuffer()),canvas.width,canvas.height);
   canvas.width=canvas.height=1;
