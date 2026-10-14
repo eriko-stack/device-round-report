@@ -78,68 +78,94 @@ $('reports').addEventListener('change',async()=>{const id=$('reports').value;if(
 $('export').addEventListener('click',()=>{collect();download(`round-report-${report.date}.json`,JSON.stringify({format:'device-round-v1',report}),'application/json');status('編集データを書き出しました。写真とコメントを含むファイルとして管理してください。')});
 $('import').addEventListener('change',async event=>{const input=event.target;const file=input.files[0];if(!file)return;try{if(file.size>45*1024*1024)throw Error('編集データが大きすぎます。');const value=JSON.parse(await file.text());if(value.format!=='device-round-v1')throw Error('このアプリの編集データではありません。');const next=RoundModel.validateReport(value.report);if(dirty&&!confirm('未保存の変更があります。編集データを開きますか？'))return;report=next;dirty=true;render();await save()}catch(error){status(error.message||'編集データを開けませんでした。',true)}finally{input.value=''}});
 $('delete').addEventListener('click',async()=>{if(!confirm('この報告書と写真を、このブラウザーの保存先から削除します。よろしいですか？'))return;try{if(db)await transact('readwrite',store=>store.delete(report.id));report=RoundModel.fresh();dirty=false;render();if(db)await refreshList();status('端末内の報告書を削除しました。書き出したファイル・PDFや写真アプリの写真は別に削除してください。')}catch(error){status('削除できませんでした。',true)}});
-const pdfReady = new Promise((resolve, reject) => {
-  if (window.LocalRoundPDF) { resolve(); return; }
-  const script = document.createElement('script');
-  script.src = './pdf-local.js';
-  script.onload = resolve;
-  script.onerror = () => reject(Error('PDF機能を読み込めません。オンラインでページを開き直してください。'));
-  document.head.append(script);
-});
-pdfReady.catch(() => {});
-let preparedPdf = null;
-const sharePdfButton = button('作成したPDFを保存／共有', async () => {
-  if (!preparedPdf) return;
+const exportScripts = new Map();
+function loadExportScript(path) {
+  if (!exportScripts.has(path)) {
+    const promise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = path;
+      script.onload = resolve;
+      script.onerror = () => { script.remove(); exportScripts.delete(path); reject(Error('出力機能を読み込めません。オンラインでアプリを開き直してください。')); };
+      document.head.append(script);
+    });
+    exportScripts.set(path, promise);
+  }
+  return exportScripts.get(path);
+}
+const formatLabel = document.createElement('label');
+formatLabel.textContent = '出力形式';
+const formatSelect = document.createElement('select');
+formatSelect.id = 'output-format';
+formatSelect.add(new Option('PDF（配布・印刷用）', 'pdf'));
+formatSelect.add(new Option('PPTX（PowerPointで編集用）', 'pptx'));
+formatLabel.append(formatSelect);
+$('pdf').before(formatLabel);
+let preparedOutput = null;
+const shareOutputButton = button('作成したファイルを保存／共有', async () => {
+  if (!preparedOutput) return;
   try {
-    const file = new File([preparedPdf.blob], preparedPdf.name, {type: 'application/pdf'});
+    const file = new File([preparedOutput.blob], preparedOutput.name, {type: preparedOutput.blob.type});
     if (navigator.canShare && navigator.canShare({files: [file]})) {
       await navigator.share({files: [file]});
     } else {
-      download(preparedPdf.name, preparedPdf.blob, 'application/pdf');
+      download(preparedOutput.name, preparedOutput.blob, preparedOutput.blob.type);
     }
   } catch (error) {
-    if (error.name !== 'AbortError') status('共有できませんでした。PDFの保存をもう一度お試しください。', true);
+    if (error.name !== 'AbortError') status('共有できませんでした。ダウンロードボタンから保存してください。', true);
   }
 });
-sharePdfButton.hidden = true;
-sharePdfButton.style.display = 'none';
-$('pdf').after(sharePdfButton);
-$('pdf').textContent = 'A4のPDFを直接作る';
-const pdfHelp = sharePdfButton.nextElementSibling;
-if (pdfHelp && pdfHelp.tagName === 'P') pdfHelp.textContent = '印刷画面を使わず、端末内でPDFを作ります。作成後「作成したPDFを保存／共有」から「ファイルに保存」を選んでください。';
-function clearPreparedPdf() {
-  preparedPdf = null;
-  sharePdfButton.hidden = true;
-  sharePdfButton.style.display = 'none';
+const downloadOutputButton = button('ダウンロードして保存', () => {
+  if (preparedOutput) download(preparedOutput.name, preparedOutput.blob, preparedOutput.blob.type);
+});
+shareOutputButton.style.display = downloadOutputButton.style.display = 'none';
+$('pdf').after(shareOutputButton, downloadOutputButton);
+function refreshOutputLabel() { $('pdf').textContent = formatSelect.value === 'pptx' ? 'A4のPPTXを作る' : 'A4のPDFを直接作る'; }
+refreshOutputLabel();
+const exportHelp = downloadOutputButton.nextElementSibling;
+if (exportHelp && exportHelp.tagName === 'P') exportHelp.textContent = 'PDF／PPTXを選んで端末内で作成します。作成後「保存／共有」から「ファイルに保存」を選んでください。PPTXは写真・文字をPowerPointで編集できます。';
+function clearPreparedOutput() {
+  preparedOutput = null;
+  shareOutputButton.style.display = downloadOutputButton.style.display = 'none';
 }
+formatSelect.addEventListener('change', () => { clearPreparedOutput(); refreshOutputLabel(); });
 const reportPanel = $('pdf').closest('main');
-reportPanel.addEventListener('input', clearPreparedPdf);
-reportPanel.addEventListener('change', clearPreparedPdf);
+reportPanel.addEventListener('input', clearPreparedOutput);
+reportPanel.addEventListener('change', clearPreparedOutput);
 reportPanel.addEventListener('click', event => {
-  if (event.target.closest('#editor') || event.target.id === 'new' || event.target.id === 'delete') clearPreparedPdf();
+  if (event.target.closest('#editor') || event.target.id === 'new' || event.target.id === 'delete') clearPreparedOutput();
 });
 $('pdf').addEventListener('click', async () => {
   collect();
   const current = report;
   const snapshot = JSON.stringify(report);
-  clearPreparedPdf();
+  const format = formatSelect.value;
+  clearPreparedOutput();
   $('pdf').disabled = true;
-  status('端末内でPDFを作成しています…');
+  formatSelect.disabled = true;
+  status(`端末内で${format.toUpperCase()}を作成しています…`);
   try {
-    await pdfReady;
-    const blob = await LocalRoundPDF.create(JSON.parse(snapshot));
+    let blob;
+    if (format === 'pptx') {
+      await loadExportScript('./pptxgen.bundle.js');
+      await loadExportScript('./pptx-local.js');
+      blob = await LocalRoundPPTX.create(JSON.parse(snapshot));
+    } else {
+      await loadExportScript('./pdf-local.js');
+      blob = await LocalRoundPDF.create(JSON.parse(snapshot));
+    }
     if (report !== current || JSON.stringify(report) !== snapshot) {
-      status('作成中に入力が変わりました。PDFをもう一度作成してください。', true);
+      status('作成中に入力が変わりました。もう一度作成してください。', true);
       return;
     }
-    preparedPdf = {blob, name: `round-report-${report.date}.pdf`};
-    sharePdfButton.hidden = false;
-    sharePdfButton.style.display = 'inline-block';
-    status('PDFを作成しました。「作成したPDFを保存／共有」を押してください。');
+    preparedOutput = {blob, name: `round-report-${report.date}.${format}`};
+    shareOutputButton.textContent = `作成した${format.toUpperCase()}を保存／共有`;
+    shareOutputButton.style.display = downloadOutputButton.style.display = 'inline-block';
+    status(`${format.toUpperCase()}を作成しました。「保存／共有」を押してください。`);
   } catch (error) {
-    status(error.message || 'PDFを作成できませんでした。', true);
+    status(error.message || 'ファイルを作成できませんでした。', true);
   } finally {
     $('pdf').disabled = false;
+    formatSelect.disabled = false;
   }
 });
 window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue=''}});

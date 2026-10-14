@@ -1,5 +1,5 @@
-const CACHE='device-round-v5-direct-pdf';
-const FILES=['./','./index.html','./style.css','./model.js','./app.js','./pdf-local.js','./manifest.webmanifest','./icon.svg'];
+const CACHE='device-round-v6-export-choice';
+const FILES=['./','./index.html','./style.css','./model.js','./app.js','./pptx-local.js','./pptxgen.bundle.js','./pdf-local.js','./manifest.webmanifest','./icon.svg'];
 const URLS=FILES.map(path=>new URL(path,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(URLS.map(url=>new Request(url,{cache:'reload'}))))
