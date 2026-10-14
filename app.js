@@ -20,7 +20,19 @@ function editor(){const target=$('editor');target.replaceChildren();report.items
  const label=document.createElement('label');label.className='comment';label.textContent='確認した状況・ご提案';const comment=document.createElement('textarea');comment.value=item.comment;comment.maxLength=600;comment.addEventListener('input',()=>{item.comment=comment.value;modified()});label.append(comment);grid.append(label);section.append(grid);target.append(section)
 })}
 function render(){for(const key of ['place','date','time','participants','count'])$(key).value=report[key];editor();preview()}
-function preview(){const paper=$('paper');paper.className=`rows-${report.count}`;$('paper-title').textContent=`${report.place||'○○'}ラウンド報告書`;$('paper-meta').textContent=`日時：${report.date}　${report.time}\n参加者：${report.participants}`;const target=$('paper-items');target.replaceChildren();report.items.slice(0,report.count).forEach((item,i)=>{const row=document.createElement('div');row.className='print-row';const title=document.createElement('h2');title.textContent=`${i+1}. ${item.title||'確認項目'}`;const content=document.createElement('div');content.className='row-content';const photo=document.createElement('div');photo.className='print-photo';if(item.photo){const image=new Image();image.src=item.photo;image.alt=`写真 ${i+1}`;photo.append(image)}else{photo.textContent='写真未登録'}const comment=document.createElement('div');comment.className='print-comment';comment.textContent=item.comment;content.append(photo,comment);row.append(title,content);target.append(row)})}
+function preview(){const paper=$('paper');paper.className=`rows-${report.count}`;$('paper-title').textContent=`${report.place||'○○'}ラウンド報告書`;$('paper-meta').textContent=`日時：${report.date}　${report.time}\n参加者：${report.participants}`;const target=$('paper-items');target.replaceChildren();report.items.slice(0,report.count).forEach((item,i)=>{const row=document.createElement('div');row.className='print-row';const title=document.createElement('h2');title.textContent=`${i+1}. ${item.title||'確認項目'}`;const content=document.createElement('div');content.className='row-content';const photo=document.createElement('div');photo.className='print-photo';if(item.photo){const image=new Image();image.src=item.photo;image.alt=`写真 ${i+1}`;photo.append(image)}else{photo.textContent='写真未登録'}const comment=document.createElement('div');comment.className='print-comment';item.comment.split('\n').forEach((line, index) => {
+  if (index > 0) {
+    comment.append(document.createTextNode('\n'));
+  }
+
+  if (['確認した状況', 'ご提案'].includes(line.trim())) {
+    const bold = document.createElement('strong');
+    bold.textContent = line;
+    comment.append(bold);
+  } else {
+    comment.append(document.createTextNode(line));
+  }
+});content.append(photo,comment);row.append(title,content);target.append(row)})}
 async function save(){if(!db){status('ブラウザー内の保存が利用できません。編集データを書き出してください。',true);return}collect();try{await transact('readwrite',store=>store.put({...report,updated:new Date().toISOString()}));dirty=false;await refreshList();status('この端末に保存しました。')}catch(error){status('端末に保存できませんでした。空き容量を確認し、編集データを書き出してください。',true)}}
 function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type}));const anchor=document.createElement('a');anchor.href=url;anchor.download=name;document.body.append(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
 for(const key of ['place','date','time','participants'])$(key).addEventListener('input',()=>{collect();modified()});$('count').addEventListener('change',()=>{collect();modified();editor()});$('save').addEventListener('click',save);
