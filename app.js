@@ -10,12 +10,49 @@ function collect(){for(const key of ['place','date','time','participants'])repor
 function button(label,callback){const node=document.createElement('button');node.textContent=label;node.addEventListener('click',callback);return node}
 function photoInput(capture){const input=document.createElement('input');input.type='file';input.accept='image/*';input.hidden=true;if(capture)input.setAttribute('capture','environment');return input}
 async function readPhoto(file){if(file.size>20*1024*1024)throw Error('写真は20MB以下にしてください。');const url=URL.createObjectURL(file);try{const image=new Image();image.src=url;await image.decode();const factor=Math.min(1,1800/Math.max(image.naturalWidth,image.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.round(image.naturalWidth*factor);canvas.height=Math.round(image.naturalHeight*factor);const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.88)}finally{URL.revokeObjectURL(url)}}
+async function rotatePhoto(data, degrees) {
+  const image = new Image();
+  image.src = data;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalHeight;
+  canvas.height = image.naturalWidth;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.translate(canvas.width / 2, canvas.height / 2);
+  context.rotate(degrees * Math.PI / 180);
+  context.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+  return canvas.toDataURL('image/jpeg', 0.95);
+}
 function editor(){const target=$('editor');target.replaceChildren();report.items.slice(0,report.count).forEach((item,index)=>{
  const section=document.createElement('section');section.className='item';
  const heading=document.createElement('label');heading.textContent=`${index+1}. 項目の見出し`;const title=document.createElement('input');title.value=item.title;title.maxLength=40;title.addEventListener('input',()=>{item.title=title.value;modified()});heading.append(title);section.append(heading);
  const grid=document.createElement('div');grid.className='photo-comment';const photo=document.createElement('div');photo.className='photo-area';
  if(item.photo){const image=document.createElement('img');image.src=item.photo;image.alt=`写真 ${index+1}`;photo.append(image)}else{const empty=document.createElement('div');empty.className='empty';empty.textContent='写真を撮影・選択してください';photo.append(empty)}
  const tools=document.createElement('div');tools.className='toolbar';for(const [label,capture] of [['📷 この項目を撮影',true],['写真を選ぶ',false]]){const input=photoInput(capture);input.addEventListener('change',async()=>{if(!input.files[0])return;const current=report;try{const data=await readPhoto(input.files[0]);if(current!==report)return;item.photo=data;modified();editor()}catch(error){status('写真を読み込めませんでした。JPEG／PNGの写真でお試しください。',true)}});tools.append(button(label,()=>input.click()),input)}
+ for (const [label, degrees] of [['↶ 左へ90°', -90], ['↷ 右へ90°', 90]]) {
+   const rotateButton = button(label, async () => {
+     const current = report;
+     const original = item.photo;
+     if (!original) return;
+     rotateButton.disabled = true;
+     try {
+       const rotated = await rotatePhoto(original, degrees);
+       if (current !== report || item.photo !== original) return;
+       item.photo = rotated;
+       modified();
+       editor();
+       status('写真の向きを変更しました。「この端末に保存」で保存してください。');
+     } catch (error) {
+       status('写真を回転できませんでした。写真を選び直してください。', true);
+     } finally {
+       rotateButton.disabled = !item.photo;
+     }
+   });
+   rotateButton.disabled = !item.photo;
+   tools.append(rotateButton);
+ }
  const remove=button('写真を削除',()=>{if(!confirm('この項目の写真を外しますか？'))return;item.photo=null;modified();editor()});remove.disabled=!item.photo;tools.append(remove);photo.append(tools);grid.append(photo);
  const label=document.createElement('label');label.className='comment';label.textContent='確認した状況・ご提案';const comment=document.createElement('textarea');comment.value=item.comment;comment.maxLength=600;comment.addEventListener('input',()=>{item.comment=comment.value;modified()});label.append(comment);grid.append(label);section.append(grid);target.append(section)
 })}

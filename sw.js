@@ -1,4 +1,4 @@
-const CACHE='device-round-v3';
+const CACHE='device-round-v4';
 const FILES=['./','./index.html','./style.css','./model.js','./app.js','./manifest.webmanifest','./icon.svg'];
 const URLS=FILES.map(path=>new URL(path,self.registration.scope).href);
 self.addEventListener('install',event=>event.waitUntil(
